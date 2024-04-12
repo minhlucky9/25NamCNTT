@@ -8,7 +8,7 @@ function init() {
     container = document.getElementById('mainScene');
 
     camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(1.59, 3, 4);
+    camera.position.set(1.7, 3, 5);
     camera.rotation.set( -0.7, 0.33, 0.261);
   
     scene = new THREE.Scene();
@@ -35,7 +35,7 @@ function init() {
 
     //
 
-    LoadPlayer();
+    //LoadPlayer();
 
     //
 
@@ -70,6 +70,7 @@ function animate() {
         mixer.update( delta );
     }
 
+    UpdataCrown(delta);
 }
 
 function render() {
