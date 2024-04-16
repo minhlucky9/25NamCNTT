@@ -70,7 +70,7 @@ function animate() {
         mixer.update( delta );
     }
 
-    UpdataCrown(delta);
+    //UpdataCrown(delta);
 }
 
 function render() {
