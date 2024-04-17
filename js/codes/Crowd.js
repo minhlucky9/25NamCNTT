@@ -4,7 +4,9 @@ let update_times = [];
 const positions = [];
 const offsets = [];
 const colors = [];
-let speedScale = 1;
+let speedScale = 0.7;
+let fontVectors = new FontVector();
+let textPositions = [];
 
 function InitCrown() {
     const vector = new THREE.Vector4();
@@ -25,7 +27,7 @@ function InitCrown() {
         offsets.push((Math.random() - 0.5) * 5, 0, (Math.random() - 0.5) * 5);
 
         // velocity
-        let vel = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5);
+        let vel = new THREE.Vector3(0, 0, 0);
         velocities.push(vel.x, vel.y, vel.z);
 
         //
@@ -132,7 +134,16 @@ function InitCrown() {
 
     //
 
-    initHersheyFont();
+    setTimeout(function() {
+        if(fontVectors) {
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('M', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('I', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('N', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('H', instances, 0.2)))
+        }
+    }, 1000);
+
+    
 }
 
 function getUpdateVelocityTime() {
@@ -148,7 +159,53 @@ function smoothstep(edge0, edge1, x) {
     return k * k * (3 - 2 * k); 
 }
 
-function UpdataCrown(delta) {
+let textId = -1;
+let curTime = Infinity;
+let transitionTime = 1.5;
+let holdTime = 1;
+function UpdateCrowdTextLineUp(delta) {
+    if(textPositions.length <= 0) 
+        return;
+    
+    //check condition to update velocity
+    let updateVelocity = false;
+
+    curTime = curTime + delta;
+    if(curTime > transitionTime + holdTime) {
+        updateVelocity = true;
+        curTime = 0;
+        textId  = (textId + 1) % textPositions.length;
+    }
+
+    //calculate velocity and move 
+    let moveTime = 1 - Math.min(curTime, transitionTime) / transitionTime;
+
+    for (let i = 0; i < instances; i++) {
+        
+        let curPos = new THREE.Vector3(offsets[i * 3], offsets[i * 3 + 1], offsets[i * 3 + 2]);
+
+        let textPos = textPositions[textId][0];
+        if(i < textPositions[textId].length ) {
+            textPos = textPositions[textId][i];
+        }
+        
+        if(updateVelocity) {
+            let vel = curPos.clone().sub(textPos);
+            velocities[i * 3] = vel.x;
+            velocities[i * 3 + 2] = vel.z;
+        } 
+
+        // offsets
+        offsets[i * 3] = textPos.x + (velocities[i * 3]) * moveTime; 
+        offsets[i * 3 + 1] = textPos.y + (velocities[i * 3 + 1]) * moveTime; 
+        offsets[i * 3 + 2] = textPos.z + (velocities[i * 3 + 2]) * moveTime; 
+    }
+
+    //
+    scene.children[0].geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
+}
+
+function UpdateCrowdRandomWalk(delta) {
 
     for (let i = 0; i < instances; i++) {
         let updateVelocity = false;
@@ -187,216 +244,20 @@ function UpdataCrown(delta) {
     scene.children[0].geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
 }
 
-let fontCurves = [];
-
-function initHersheyFont() {
-    let loader = new THREE.FileLoader();
-
-    loader.load("/fonts/hershey/rowmans.jhf", function(font) {
-        
-        let lines = font.split('\n');
-
-        for(let i = 0; i < lines.length; i ++){
-            let descriptor = lines[i];
-            let R = 'R'.charCodeAt(0);
-            let number = parseInt(descriptor.substr(0, 5));
-            let left = descriptor[8].charCodeAt(0) - R;
-            let right = descriptor[9].charCodeAt(0) - R;
-            let numVertices = parseInt(descriptor.substr(5, 3), 10) - 1;
-            
-            let curves = [];
-            let currentPath = [];
-            for(let v = 0; v < numVertices; v++) {
-                const x = descriptor[10 + v * 2].charCodeAt(0) - R
-                const y = descriptor[11 + v * 2].charCodeAt(0) - R
-                if ((x === -50) && (y === 0)) {
-                    curves.push(currentPath)
-                    currentPath = []
-                } else {
-                    currentPath.push([x, y])
-                }
-            }
-            curves.push(currentPath)
-
-            fontCurves['' + number] = curves;
-        }
-
-        let points = getPointsOfChar('H', 60, 0.2);
-        console.log(points);
-        
-        for (let i = 0; i < instances; i++) {
-            if(points[i]) {
-                offsets[i * 3] = points[i].x;
-                offsets[i * 3 + 1] = points[i].y;
-                offsets[i * 3 + 2] = points[i].z;
-            } else {
-                offsets[i * 3] = points[0].x;
-                offsets[i * 3 + 1] = points[0].y;
-                offsets[i * 3 + 2] = points[0].z;
-            } 
-            
-        }
-        
-        scene.children[0].geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
-    })
-}
-
-function IsExistInArray(point, array) {
-    
-    for(let i = 0; i < array.length; i++) {
-        if(point.x == array[i].x && point.y == array[i].y && point.z == array[i].z )
-        {
-            return true;
-        }
+function shuffle(array) {
+    let currentIndex = array.length;
+  
+    // While there remain elements to shuffle...
+    while (currentIndex != 0) {
+  
+      // Pick a remaining element...
+      let randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+  
+      // And swap it with the current element.
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
     }
 
-    return false;
-}
-
-function getPointsOfChar(char, nb_point, scale) {
-    let vectors_of_char = fontCurves[rowmans_dict[char]];
-    //calculate total length
-    let length = 0;
-    let results = [];
-    for(let i = 0 ; i < vectors_of_char.length; i ++) {
-        let vector = vectors_of_char[i];
-
-        for(let j = 0; j < vector.length - 1; j ++) 
-        {
-            //point 1 and 2
-            let p1 = new THREE.Vector3(vector[j][0], 0, vector[j][1]);
-            let p2 = new THREE.Vector3(vector[j + 1][0], 0, vector[j + 1][1]);
-            
-            //if(!IsExistInArray(p1, results)) {results.push(p1.clone().multiplyScalar(scale));}
-            //if(!IsExistInArray(p2, results)) {results.push(p2.clone().multiplyScalar(scale));}
-
-            length += p2.distanceTo(p1);
-        }
-    }  
-    
-    let segmentLength = length / (nb_point);
-    
-    for(let i = 0 ; i < vectors_of_char.length; i ++) {
-        let vector = vectors_of_char[i];
-
-        for(let j = 0; j < vector.length - 1; j ++) 
-        {
-            //point 1 and 2
-            let p1 = new THREE.Vector3(vector[j][0], 0, vector[j][1]);
-            let p2 = new THREE.Vector3(vector[j + 1][0], 0, vector[j + 1][1]);
-            let dir = p2.clone().sub(p1).normalize();
-            let length = p2.distanceTo(p1);
-            dir.normalize();
-
-            let k = 1;
-            while(true) {
-                let currentLength = k * segmentLength;
-                if(currentLength >= length) break;
-            
-                let p = p1.clone().add( dir.clone().multiplyScalar(currentLength) ).multiplyScalar(scale);
-                results.push(p);
-                k++;
-            }
-        }
-        
-    }  
-
-    return results;
-}
-
-let rowmans_dict = {
-  'A': 501,
-  'B': 502,
-  'C': 503,
-  'D': 504,
-  'E': 505,
-  'F': 506,
-  'G': 507,
-  'H': 508,
-  'I': 509,
-  'J': 510,
-  'K': 511,
-  'L': 512,
-  'M': 513,
-  'N': 514,
-  'O': 515,
-  'P': 516,
-  'Q': 517,
-  'R': 518,
-  'S': 519,
-  'T': 520,
-  'U': 521,
-  'V': 522,
-  'W': 523,
-  'X': 524,
-  'Y': 525,
-  'Z': 526,
-  'a': 601,
-  'b': 602,
-  'c': 603,
-  'd': 604,
-  'e': 605,
-  'f': 606,
-  'g': 607,
-  'h': 608,
-  'i': 609,
-  'j': 610,
-  'k': 611,
-  'l': 612,
-  'm': 613,
-  'n': 614,
-  'o': 615,
-  'p': 616,
-  'q': 617,
-  'r': 618,
-  's': 619,
-  't': 620,
-  'u': 621,
-  'v': 622,
-  'w': 623,
-  'x': 624,
-  'y': 625,
-  'z': 626,
-  ' ': 699,
-  '0': 700,
-  '1': 701,
-  '2': 702,
-  '3': 703,
-  '4': 704,
-  '5': 705,
-  '6': 706,
-  '7': 707,
-  '8': 708,
-  '9': 709,
-  '.': 710,
-  ',': 711,
-  ':': 712,
-  ';': 713,
-  '!': 714,
-  '?': 715,
-  '"': 717,
-  '°': 718,
-  '$': 719,
-  '/': 720,
-  '(': 721,
-  ')': 722,
-  '|': 723,
-  '-': 724,
-  '+': 725,
-  '=': 726,
-  '\'': 731,
-  '#': 733,
-  '&': 734,
-  '\\': 804,
-  '_': 999,
-  '*': 2219,
-  '[': 2223,
-  ']': 2224,
-  '{': 2225,
-  '}': 2226,
-  '<': 2241,
-  '>': 2242,
-  '~': 2246,
-  '%': 2271,
-  '@': 2273
+    return array;
 }
