@@ -7,9 +7,9 @@ function init() {
 
     container = document.getElementById('mainScene');
 
-    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.set(1.7, 3, 4);
-    camera.rotation.set( -0.7, 0.33, 0.261);
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+    camera.position.set(0, 2, 5.6);
+    camera.rotation.set( -0.46, 0, 0);
   
     scene = new THREE.Scene();
 
@@ -35,7 +35,7 @@ function init() {
 
     //
 
-    //LoadPlayer();
+    LoadPlayer();
 
     //
 
@@ -43,9 +43,22 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
+    window.addEventListener("keydown", onKeyDown);
 }
 
+function onKeyDown(e) {
+    if(e.key == " ") {
+        lineUpAnimation = !lineUpAnimation;
 
+        if(lineUpAnimation) {
+            curTime = Infinity;
+            textId = -1;
+            player.scale.set(0,0,0);
+        } else {
+            player.scale.set(1.7,1.7,1.7);
+        }
+    }
+}
 
 function onWindowResize() {
 
@@ -63,6 +76,8 @@ function animate() {
     requestAnimationFrame(animate);
     let delta = clock.getDelta();
     
+    delta = Math.min(delta, 0.01);
+
     render();
     stats.update();
 
@@ -70,8 +85,12 @@ function animate() {
         mixer.update( delta );
     }
 
-    //UpdateCrowdRandomWalk(delta);
-    UpdateCrowdTextLineUp(delta);
+    if(lineUpAnimation) {
+        UpdateCrowdTextLineUp(delta);
+    } else {
+        UpdateCrowdRandomWalk(delta);
+    }
+    
 }
 
 function render() {
@@ -81,7 +100,7 @@ function render() {
     const object = scene.children[0];
 
     
-    object.material.uniforms['time'].value = time * 0.005;
+    object.material.uniforms['time'].value = time * 0.0015;
     object.material.uniforms['sineTime'].value = Math.sin(object.material.uniforms['time'].value * 0.05);
 
     renderer.render(scene, camera);

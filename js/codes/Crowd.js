@@ -4,19 +4,30 @@ let update_times = [];
 const positions = [];
 const offsets = [];
 const colors = [];
-let speedScale = 0.7;
+const uvs = [];
+
+let speedScale = 0.4;
 let fontVectors = new FontVector();
 let textPositions = [];
 
 function InitCrown() {
     const vector = new THREE.Vector4();
 
-    positions.push(-0.1 , -0.2, 0);
-    positions.push(0.1, -0.2, 0);
-    positions.push(-0.1, 0.2, 0);
-    positions.push(0.1 , -0.2, 0);
-    positions.push(0.1, 0.2, 0);
-    positions.push(-0.1, 0.2, 0);
+    //create position
+    positions.push(-0.12 , -0.24, 0);
+    positions.push(0.12, -0.24, 0);
+    positions.push(-0.12, 0.24, 0);
+    positions.push(0.12 , -0.24, 0);
+    positions.push(0.12, 0.24, 0);
+    positions.push(-0.12, 0.24, 0);
+
+    //create uv
+    uvs.push(0 , 0);
+    uvs.push(1, 0);
+    uvs.push(0, 1);
+    uvs.push(1 , 0);
+    uvs.push(1, 1);
+    uvs.push(0, 1);
 
     // instanced attributes
 
@@ -24,10 +35,10 @@ function InitCrown() {
 
         // offsets
 
-        offsets.push((Math.random() - 0.5) * 5, 0, (Math.random() - 0.5) * 5);
+        offsets.push((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
 
         // velocity
-        let vel = new THREE.Vector3(0, 0, 0);
+        let vel = new THREE.Vector3((Math.random() - 0.5), 0, (Math.random() - 0.5));
         velocities.push(vel.x, vel.y, vel.z);
 
         //
@@ -43,7 +54,7 @@ function InitCrown() {
     geometry.instanceCount = instances; // set so its initalized for dat.GUI, will be set in first draw otherwise
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(uvs), 2));
     geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
     geometry.setAttribute('color', new THREE.InstancedBufferAttribute(new Float32Array(colors), 4));
 
@@ -54,12 +65,14 @@ function InitCrown() {
         uniforms: {
             'time': { value: 1.0 },
             'sineTime': { value: 1.0 },
-            'cameraPos': { value: camera.position }
+            'cameraPos': { value: camera.position },
+            'tex': { value: THREE.ImageUtils.loadTexture( "/textures/humans/human.png" )}
         },
         vertexShader: `
         precision highp float;
     
         uniform float sineTime;
+        uniform float time;
         uniform vec3 cameraPos;
     
         uniform mat4 modelViewMatrix;
@@ -68,10 +81,12 @@ function InitCrown() {
         attribute vec3 position;
         attribute vec3 offset;
         attribute vec4 color;
-
+        attribute vec2 uv;
+        attribute vec2 velocity;
     
         varying vec3 vPosition;
         varying vec4 vColor;
+        varying vec2 vUv;
         
         mat3 lookAtPoint(vec3 eye, vec3 at) {
 
@@ -87,37 +102,64 @@ function InitCrown() {
             return fract(sin(dot(p.xy ,vec2(12.9898,78.233))) * 43758.5453);
         }
 
+        vec2 spriteUVSelector( vec2 uv, vec2 tile, float frames, float time, float offset ) {
+
+            float t = floor(frames * mod( time, 1.0 ) );
+            t += offset;
+        
+            uv.x += mod(t, tile.x);
+            uv.y -= floor(t / tile.x);
+        
+            uv.y -= 1.0;
+            uv /= tile;
+            uv.y += 1.0;
+            
+            return uv;
+            
+        }
+
         void main(){
             //random position
             vec3 p = offset;
             
             //look at camera
-            mat3 lookAtMat = lookAtPoint(p, cameraPos);
-            vPosition = lookAtMat * position + p;
+            vPosition = position + p;
 
-            //random move
-
-            
-            
             //
             gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1.0);
             
             //send to fragment shader
             vColor = color;
+            vUv = uv;
+            float offsetUV = abs(velocity.x) > 0.005 ? 16.0 : 0.0;
+
+            vUv = spriteUVSelector( vUv, vec2( 16.0, 2.0 ), 16.0, time, offsetUV );
+
+            if( offsetUV > 0.0 && velocity.x < 0.00 ) {
+                vUv.x = 1.0 - vUv.x;
+            }
         }`,
         fragmentShader: `
         precision highp float;
     
         uniform float time;
-    
+        uniform sampler2D tex;
+
+        varying vec2 vUv;
         varying vec3 vPosition;
         varying vec4 vColor;
     
         void main() {
     
+            vec2 computeUv = vUv;
             vec4 color = vec4( vColor );
-            color.r += sin( vPosition.x * 10.0 + time ) * 0.5;
-    
+            color = texture2D(tex, computeUv);
+            
+            if( color.w < 0.5 ) {
+
+                discard;
+                
+            }
             gl_FragColor = color;
     
         }`,
@@ -130,16 +172,17 @@ function InitCrown() {
     //
 
     const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = 1;
     scene.add(mesh);
 
     //
 
     setTimeout(function() {
         if(fontVectors) {
-            textPositions.push(shuffle(fontVectors.getPointsOfChar('M', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('C', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('D', instances, 0.2)))
             textPositions.push(shuffle(fontVectors.getPointsOfChar('I', instances, 0.2)))
-            textPositions.push(shuffle(fontVectors.getPointsOfChar('N', instances, 0.2)))
-            textPositions.push(shuffle(fontVectors.getPointsOfChar('H', instances, 0.2)))
+            textPositions.push(shuffle(fontVectors.getPointsOfChar('T', instances, 0.2)))
         }
     }, 1000);
 
@@ -147,7 +190,7 @@ function InitCrown() {
 }
 
 function getUpdateVelocityTime() {
-    return Math.max((Math.random() - 0.5) * 4, 1);
+    return Math.max(Math.random() * 2, 1);
 }
 
 function clamp(val, min, max) {
@@ -161,7 +204,7 @@ function smoothstep(edge0, edge1, x) {
 
 let textId = -1;
 let curTime = Infinity;
-let transitionTime = 1.5;
+let transitionTime = 1.2;
 let holdTime = 1;
 function UpdateCrowdTextLineUp(delta) {
     if(textPositions.length <= 0) 
@@ -180,6 +223,7 @@ function UpdateCrowdTextLineUp(delta) {
     //calculate velocity and move 
     let moveTime = 1 - Math.min(curTime, transitionTime) / transitionTime;
 
+
     for (let i = 0; i < instances; i++) {
         
         let curPos = new THREE.Vector3(offsets[i * 3], offsets[i * 3 + 1], offsets[i * 3 + 2]);
@@ -191,22 +235,30 @@ function UpdateCrowdTextLineUp(delta) {
         
         if(updateVelocity) {
             let vel = curPos.clone().sub(textPos);
-            velocities[i * 3] = vel.x;
+            velocities[i * 3] = -vel.x;
             velocities[i * 3 + 2] = vel.z;
         } 
-
+        
         // offsets
-        offsets[i * 3] = textPos.x + (velocities[i * 3]) * moveTime; 
+        offsets[i * 3] = textPos.x - (velocities[i * 3]) * moveTime; 
         offsets[i * 3 + 1] = textPos.y + (velocities[i * 3 + 1]) * moveTime; 
         offsets[i * 3 + 2] = textPos.z + (velocities[i * 3 + 2]) * moveTime; 
     }
 
+    if(moveTime == 0) {
+        let velos = [];
+        scene.children[0].geometry.setAttribute('velocity', new THREE.InstancedBufferAttribute(new Float32Array(velos), 3));
+        return;
+    }
     //
     scene.children[0].geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
+    scene.children[0].geometry.setAttribute('velocity', new THREE.InstancedBufferAttribute(new Float32Array(velocities), 3));
+    
+    
 }
 
 function UpdateCrowdRandomWalk(delta) {
-
+    let velocitiesFinal = [];
     for (let i = 0; i < instances; i++) {
         let updateVelocity = false;
         let curPos = new THREE.Vector3(offsets[i * 3], offsets[i * 3 + 1], offsets[i * 3 + 2]);
@@ -228,20 +280,28 @@ function UpdateCrowdRandomWalk(delta) {
         let distance = curPos.length();
         let dirOut = curPos.normalize();
         
-        let velocityOut = dirOut.clone().multiplyScalar( smoothstep(1.5, 1, distance) );
+        let velocityOut = dirOut.clone().multiplyScalar( smoothstep(1.2, 1, distance) );
         
         //center gravity
         let velocityIn = dirOut.clone().negate().multiplyScalar( smoothstep(3, 3.5, distance) );
 
-        // offsets
+        let veloFinal = new THREE.Vector3(velocities[i * 3], velocities[i * 3 + 1], velocities[i * 3 + 2]).add( velocityIn ).add( velocityOut).normalize();
         
-        offsets[i * 3] += (velocities[i * 3] + velocityOut.x + velocityIn.x) * delta * speedScale; 
-        offsets[i * 3 + 1] += (velocities[i * 3 + 1] + velocityOut.y + velocityIn.y) * delta * speedScale; 
-        offsets[i * 3 + 2] += (velocities[i * 3 + 2] + velocityOut.z + velocityIn.z) * delta * speedScale; 
+        // offsets
+        offsets[i * 3] += veloFinal.x * delta * speedScale; 
+        offsets[i * 3 + 1] += veloFinal.y * delta * speedScale; 
+        offsets[i * 3 + 2] += veloFinal.z * delta * speedScale; 
+
+        //velocities
+        velocitiesFinal[i * 3] = veloFinal.x;
+        velocitiesFinal[i * 3 + 1] = veloFinal.y;
+        velocitiesFinal[i * 3 + 2] = veloFinal.z;
+
     }
 
     //
     scene.children[0].geometry.setAttribute('offset', new THREE.InstancedBufferAttribute(new Float32Array(offsets), 3));
+    scene.children[0].geometry.setAttribute('velocity', new THREE.InstancedBufferAttribute(new Float32Array(velocitiesFinal), 3));
 }
 
 function shuffle(array) {

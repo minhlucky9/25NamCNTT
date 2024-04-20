@@ -1,5 +1,6 @@
 let mixer;
 let clips;
+let player;
 
 function LoadPlayer(loadingManager = null) {
     var loader;
@@ -12,12 +13,13 @@ function LoadPlayer(loadingManager = null) {
 
   
     loader.load("/models/baku.glb", function (obj) {
-        let mesh = obj.scene;
+        player = obj.scene;
         
-        mesh.rotation.set(0, -0.61, 0);
-        mesh.scale.set(2,2,2);
+        player.rotation.set(0, -0.61, 0);
+        player.position.z = 1;
+        player.scale.set(1.7,1.7,1.7);
 
-        mesh.traverse(function (child) {
+        player.traverse(function (child) {
             if (child.isMesh) {
                 if (shadow) {
                     child.castShadow = true;
@@ -26,12 +28,10 @@ function LoadPlayer(loadingManager = null) {
             }
         })
 
-        scene.add(mesh);
-
-        console.log(mesh);
+        scene.add(player);
 
         //set up animation
-        mixer = new THREE.AnimationMixer( mesh.children[0].children[0] );
+        mixer = new THREE.AnimationMixer( player.children[0].children[0] );
         clips = obj.animations;
 
         // Play a specific animation
