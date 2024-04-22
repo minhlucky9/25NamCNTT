@@ -11,7 +11,7 @@ class FontVector {
     LoadHersheyFont() {
         let loader = new THREE.FileLoader();
         let fontCurves = this.rowmans_curves;
-        loader.load("/fonts/hershey/rowmans.jhf", function(font) {
+        loader.load("./fonts/hershey/rowmans.jhf", function(font) {
             
             let lines = font.split('\n');
 

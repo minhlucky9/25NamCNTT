@@ -8,7 +8,7 @@ function LoadStaticObj(url, loadingManager = null) {
         loader = new THREE.GLTFLoader(loadingManager);
     }
 
-    var texture = new THREE.TextureLoader().load('/textures/illust.jpg');
+    var texture = new THREE.TextureLoader().load('./textures/illust.jpg');
     texture.center.set(0.5, 0.5);
     texture.flipY = true;
     //texture.encoding = THREE.sRGBEncoding;

@@ -12,7 +12,7 @@ function LoadPlayer(loadingManager = null) {
     }
 
   
-    loader.load("/models/baku.glb", function (obj) {
+    loader.load("./models/baku.glb", function (obj) {
         player = obj.scene;
         
         player.rotation.set(0, -0.61, 0);

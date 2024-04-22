@@ -76,7 +76,7 @@ function animate() {
     requestAnimationFrame(animate);
     let delta = clock.getDelta();
     
-    delta = Math.min(delta, 0.01);
+    delta = Math.min(delta, 0.02);
 
     render();
     stats.update();

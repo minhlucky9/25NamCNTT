@@ -66,7 +66,7 @@ function InitCrown() {
             'time': { value: 1.0 },
             'sineTime': { value: 1.0 },
             'cameraPos': { value: camera.position },
-            'tex': { value: THREE.ImageUtils.loadTexture( "/textures/humans/human.png" )}
+            'tex': { value: THREE.ImageUtils.loadTexture( "./textures/humans/human.png" )}
         },
         vertexShader: `
         precision highp float;
