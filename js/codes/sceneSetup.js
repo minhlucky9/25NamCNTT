@@ -31,7 +31,7 @@ function init() {
 
     //
 
-    LoadStaticObj("/models/plane.glb");
+    LoadStaticObj("./models/plane.glb");
 
     //
 
